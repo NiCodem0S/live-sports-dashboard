@@ -3,6 +3,7 @@ import { createMatchSchema, listMatchesQuerySchema } from '../validation/matches
 import { matches } from '../db/schema.js'
 import { db } from '../db/db.js'
 import { desc } from 'drizzle-orm'
+import { getMatchStatus } from '../utils/match-status.js'
 
 export const matchRouter = Router()
 
@@ -11,7 +12,7 @@ const MAX_LIMIT = 100
 matchRouter.get('/', async (req, res) => {
 	const parsed = listMatchesQuerySchema.safeParse(req.query)
 	if (!parsed.success) {
-		return res.status(400).json({ error: 'Invalid query parameters', details: JSON.stringify(parsed.error) })
+		return res.status(400).json({ error: 'Invalid query parameters', details: parsed.error.issues })
 	}
 
 	const limit = Math.min(parsed.data.limit ?? 50, MAX_LIMIT)
@@ -27,6 +28,11 @@ matchRouter.get('/', async (req, res) => {
 
 matchRouter.post('/', async (req, res) => {
 	const parsed = createMatchSchema.safeParse(req.body)
+
+	if (!parsed.success) {
+		return res.status(400).json({ error: 'Invalid payload', details: parsed.error.issues })
+	}
+
 	const {
 		data: { startTime, endTime, homeScore, awayScore },
 	} = parsed
@@ -37,9 +43,6 @@ matchRouter.post('/', async (req, res) => {
     const awayScore = parsed.data.awayScore
     */
 
-	if (!parsed.success) {
-		return res.status(400).json({ error: 'Invalid payload', details: JSON.stringify(parsed.error) })
-	}
 	try {
 		const [event] = await db //returns and array containing the inserted match, we destructure it to get the first element directly
 			.insert(matches)
@@ -60,6 +63,6 @@ matchRouter.post('/', async (req, res) => {
 
 		res.status(201).json({ message: 'Match created successfully', data: event })
 	} catch (e) {
-		res.status(500).json({ error: 'Failed to create match', details: JSON.stringify(e) })
+		res.status(500).json({ error: 'Failed to create match', details: parsed.error.issues })
 	}
 })
