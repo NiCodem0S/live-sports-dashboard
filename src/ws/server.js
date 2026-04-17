@@ -1,4 +1,4 @@
-import { WebSocket } from 'ws'
+import WebSocket, { WebSocketServer } from 'ws'
 
 function sendJson(socket, payload) {
 	if (socket.readyState != WebSocket.OPEN) return
@@ -15,7 +15,7 @@ function broadcast(wss, payload) {
 
 export function attachWebSocketServer(server) {
 	//receives the HTTP server instance created by Express, we will attach our WebSocket server to it
-	const wss = new WebSocket.Server({
+	const wss = new WebSocketServer({
 		server,
 		path: '/ws',
 		maxPayload: 1024 * 1024, //1MB (maximum size of a singular websocket message) - set a reasonable limit for incoming messages to prevent abuse
