@@ -1,9 +1,10 @@
 import express from 'express'
 import http from 'http'
-import rateLimit from 'express-rate-limit'
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
 import helmet from 'helmet'
 import { matchRouter } from './routes/matches.js'
 import { attachWebSocketServer } from './ws/server.js'
+import { commentaryRouter } from './routes/commentary.js'
 
 const PORT = Number(process.env.PORT || 8000)
 const HOST = process.env.HOST || '0.0.0.0'
@@ -29,7 +30,7 @@ const limiter = rateLimit({
 	message: { error: 'Too many requests, please try again later.' },
 	standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
 	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-	keyGenerator: getClientIp, // Use custom IP extractor for proxy support
+	keyGenerator: req => ipKeyGenerator(getClientIp(req)),
 })
 //Expandable to some more complicated logic like 5 tries and 2 minutes break then on another 3 failures it jumps to 5 then 15 then 30 then 1h etc and resets every day or sth
 const authLimiter = rateLimit({
@@ -38,7 +39,7 @@ const authLimiter = rateLimit({
 	message: `Too many login attempts, please try again later`,
 	standardHeaders: true,
 	legacyHeaders: false,
-	keyGenerator: getClientIp, // Same proxy-aware IP extractor
+	keyGenerator: req => ipKeyGenerator(getClientIp(req)),
 })
 
 /* for future login endpoint
@@ -59,9 +60,11 @@ app.get('/', (req, res) => {
 	res.json({ message: 'Live Sports Dashboard server is running.' })
 })
 app.use('/matches', matchRouter)
+app.use('/matches/:id/commentary', commentaryRouter)
 
-const { broadcastMatchCreated } = attachWebSocketServer(server)
+const { broadcastMatchCreated, broadcastCommentary } = attachWebSocketServer(server)
 app.locals.broadcastMatchCreated = broadcastMatchCreated
+app.locals.broadcastCommentary = broadcastCommentary
 
 server.listen(PORT, HOST, () => {
 	const baseUrl = HOST === '0.0.0.0' ? `http://localhost:${PORT}` : `http://${HOST}:${PORT}`
