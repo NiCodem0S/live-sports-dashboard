@@ -13,5 +13,5 @@ export const createCommentarySchema = z.object({
 	team: z.string().optional(),
 	message: z.string().min(1),
 	metadata: z.record(z.string(), z.any()).optional(),
-	tags: z.array(z.string()).optional(),
+	tags: z.string().optional(),
 })

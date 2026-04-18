@@ -30,7 +30,7 @@ const limiter = rateLimit({
 	message: { error: 'Too many requests, please try again later.' },
 	standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
 	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-	keyGenerator: (req, res) => ipKeyGenerator(getClientIp(req), req, res),
+	keyGenerator: req => ipKeyGenerator(getClientIp(req)),
 })
 //Expandable to some more complicated logic like 5 tries and 2 minutes break then on another 3 failures it jumps to 5 then 15 then 30 then 1h etc and resets every day or sth
 const authLimiter = rateLimit({
@@ -39,7 +39,7 @@ const authLimiter = rateLimit({
 	message: `Too many login attempts, please try again later`,
 	standardHeaders: true,
 	legacyHeaders: false,
-	keyGenerator: (req, res) => ipKeyGenerator(getClientIp(req), req, res),
+	keyGenerator: req => ipKeyGenerator(getClientIp(req)),
 })
 
 /* for future login endpoint
