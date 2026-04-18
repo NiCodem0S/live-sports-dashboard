@@ -1,5 +1,5 @@
 import WebSocket, { WebSocketServer } from 'ws'
-import { validateWSMessage } from '../validation/websocket.js
+import { validateWSMessage } from '../validation/websocket.js'
 import { WebSocketRateLimiter } from './rateLimiter.js'
 
 function sendJson(socket, payload) {
