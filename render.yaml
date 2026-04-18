@@ -3,7 +3,7 @@ services:
     name: live-sports-dashboard
     runtime: node
     plan: free
-    rootDir: live-sports-dashboard
+    rootDir: .
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /
