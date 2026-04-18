@@ -1,4 +1,6 @@
-import { WebSocket } from 'ws'
+import WebSocket, { WebSocketServer } from 'ws'
+import { validateWSMessage } from '../validation/websocket.js'
+import { WebSocketRateLimiter } from './rateLimiter.js'
 
 function sendJson(socket, payload) {
 	if (socket.readyState != WebSocket.OPEN) return
@@ -15,13 +17,21 @@ function broadcast(wss, payload) {
 
 export function attachWebSocketServer(server) {
 	//receives the HTTP server instance created by Express, we will attach our WebSocket server to it
-	const wss = new WebSocket.Server({
+	const wss = new WebSocketServer({
 		server,
 		path: '/ws',
 		maxPayload: 1024 * 1024, //1MB (maximum size of a singular websocket message) - set a reasonable limit for incoming messages to prevent abuse
 	})
 
+	const rateLimiter = new WebSocketRateLimiter(60, 60000)
+	// Counter to generate unique client IDs
+	let clientIdCounter = 0
+
 	wss.on('connection', socket => {
+		// Assign unique ID to this client
+		const clientId = ++clientIdCounter
+		socket.clientId = clientId
+
 		socket.isAlive = true
 		socket.on('pong', () => {
 			socket.isAlive = true
@@ -29,7 +39,37 @@ export function attachWebSocketServer(server) {
 
 		sendJson(socket, { type: 'welcome' })
 
+		socket.on('message', (data) =>  {
+
+			if(rateLimiter.isRateLimited(clientId))
+			{
+				sendJson(socket, {
+					type: 'error',
+					data: {
+						message: 'Rate limited. Max 60 messages per 60 seconds.',
+            			remaining: rateLimiter.getRemaining(clientId)
+					}
+				})
+				return
+			}
+			const validation = validateWSMessage(data)
+			if(!validation.success)
+			{
+				sendJson(socket, {
+					type: 'error',
+					data: { message: 'Invalid message' }
+				})
+				return
+			}
+			console.log('Valid message received:', validation.data)
+		})
+
 		socket.on('error', console.error)
+
+		socket.on('close' , () => {
+			    rateLimiter.removeClient(clientId)
+    			console.log(`Client ${clientId} disconnected`)
+		})
 	})
 
 	const interval = setInterval(() => {
